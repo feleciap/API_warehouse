@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI Interaction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>FastAPI Interaction Page</h1>
+    
+    <h3>Create Product</h3>
+    <label for="product-name">Name:</label>
+    <input type="text" id="product-name" placeholder="Enter product name">
+    
+    <label for="product-description">Description:</label>
+    <input type="text" id="product-description" placeholder="Enter product description">
+    
+    <label for="product-price">Price:</label>
+    <input type="number" id="product-price" placeholder="Enter product price">
+    
+    <label for="product-quantity">Quantity:</label>
+    <input type="number" id="product-quantity" placeholder="Enter product quantity">
+    
+    <button onclick="createProduct()">Create Product</button>
+
+    <h3>Get Products</h3>
+    <button onclick="getProducts()">Get All Products</button>
+    
+    <pre id="response"></pre>
+
+    <script>
+        const apiUrl = 'http://127.0.0.1:8000';
+
+        // Create a new product
+        async function createProduct() {
+            const name = document.getElementById('product-name').value;
+            const description = document.getElementById('product-description').value;
+            const price = document.getElementById('product-price').value;
+            const quantity = document.getElementById('product-quantity').value;
+            
+            const productData = {
+                name: name,
+                description: description,
+                price: parseFloat(price),
+                quantity: parseInt(quantity)
+            };
+            
+            try {
+                const response = await fetch(`${apiUrl}/products/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+                
+                const data = await response.json();
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Get all products
+        async function getProducts() {
+            try {
+                const response = await fetch(`${apiUrl}/products/`, {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
