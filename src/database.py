@@ -1,14 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# URL для подключения к базе данных PostgreSQL
-DATABASE_URL = "postgresql://feleciap:123@localhost/warehouse"
+SQLALCHEMY_DATABASE_URL = "postgresql://feleciap:123@localhost/warehouse"
 
-# Создаем движок для работы с базой данных
-engine = create_engine(DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)  
 
-# Создаем фабрику сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Создаем базовый класс для моделей
 Base = declarative_base()

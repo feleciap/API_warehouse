@@ -15,7 +15,7 @@ class Product(ProductBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True  
 
 # Pydantic модели для элементов заказа
 class OrderItemBase(BaseModel):
@@ -30,7 +30,7 @@ class OrderItem(OrderItemBase):
     product: Product
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Pydantic модели для заказов
 class OrderBase(BaseModel):
@@ -44,7 +44,7 @@ class Order(OrderBase):
     items: List[OrderItem]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Модель для обновления статуса заказа
 class OrderStatusUpdate(BaseModel):
