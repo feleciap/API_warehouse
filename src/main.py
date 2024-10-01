@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Depends
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List  
+from fastapi import Request
 import models, schemas
 from database import SessionLocal, engine
 
@@ -9,6 +12,8 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+templates = Jinja2Templates(directory="src/templates")
+
 # Получение базы данных
 def get_db():
     db = SessionLocal()
@@ -16,6 +21,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Главная страница с кнопками
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
 
 # Создание продукта
 @app.post("/products/", response_model=schemas.Product)

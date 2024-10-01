@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Центрируем по горизонтали */
+            justify-content: center; /* Центрируем по вертикали */
+            height: 100vh; /* Высота 100% экрана */
+            margin: 0; /* Убираем отступы */
+            background-color: #f0f0f0; /* Цвет фона */
+        }
+        h1 {
+            margin-bottom: 20px; /* Отступ снизу от заголовка */
+            color: #333; /* Цвет текста */
+        }
+        button {
+            padding: 15px 30px; /* Увеличенные размеры кнопок */
+            margin: 10px; /* Отступы между кнопками */
+            font-size: 16px; /* Размер шрифта */
+            border: none; /* Убираем границы */
+            border-radius: 5px; /* Закругляем углы */
+            cursor: pointer; /* Курсор при наведении */
+            background-color: #007BFF; /* Цвет фона кнопок */
+            color: white; /* Цвет текста кнопок */
+            transition: background-color 0.3s; /* Плавный переход цвета */
+        }
+        button:hover {
+            background-color: #0056b3; /* Цвет при наведении */
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to our Warehouse</h1>
+    <button onclick="location.href='/products/'">Products</button>
+    <button onclick="location.href='/orders/'">Orders</button>
+</body>
+</html>
