@@ -6,7 +6,7 @@ from models import Base, Product
 from main import app, get_db
 
 # Настройка тестовой базы данных (например, SQLite in-memory)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "postgresql://feleciap:123@localhost/warehouse"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

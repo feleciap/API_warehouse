@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
 # Pydantic модели для продуктов
 class ProductBase(BaseModel):
@@ -19,6 +20,8 @@ class Product(ProductBase):
 
 # Pydantic модели для элементов заказа
 class OrderItemBase(BaseModel):
+    id: int
+    order_id: int
     product_id: int
     quantity: int
 
@@ -49,3 +52,22 @@ class Order(OrderBase):
 # Модель для обновления статуса заказа
 class OrderStatusUpdate(BaseModel):
     status: str
+
+
+class OrderItemResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+
+    class Config:
+        from_attributes = True  # Включаем возможность использования from_orm
+
+
+class OrderResponse(BaseModel):
+    id: int
+    created_at: datetime
+    status: str
+    items: List[OrderItemResponse]
+
+    class Config:
+        from_attributes = True  
