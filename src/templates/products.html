@@ -4,30 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products</title>
-    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <h1>Product List</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Price</th>
-                <th>Stock</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in products %}
-            <tr>
-                <td>{{ product.id }}</td>
-                <td>{{ product.name }}</td>
-                <td>{{ product.price }}</td>
-                <td>{{ product.stock }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <a href="/">Back to Home</a>
+    
+    <!-- Кнопка для создания нового товара -->
+    <a href="/products/new">
+        <button>Create New Product</button>
+    </a>
+    
+    <ul>
+        {% for product in products %}
+        <li>
+            <strong>{{ product.name }}</strong> - {{ product.description }} ({{ product.stock }} in stock)
+            
+            <!-- Кнопки для редактирования и удаления товара -->
+            <a href="/products/{{ product.id }}/edit">
+                <button>Edit</button>
+            </a>
+            <a href="/products/{{ product.id }}/delete">
+                <button>Delete</button>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

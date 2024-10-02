@@ -9,12 +9,14 @@ import models, schemas
 from database import SessionLocal, engine
 from models import Product, Order, OrderItem
 from schemas import Product as ProductSchema, ProductCreate, Order as OrderSchema, OrderCreate, OrderResponse, OrderItemResponse
+from fastapi.staticfiles import StaticFiles
 
 router = APIRouter()
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 templates = Jinja2Templates(directory="src/templates")
 
@@ -51,12 +53,12 @@ def get_products(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("products.html", {"request": request, "products": products})
 
 # Получение информации о товаре по id
-@app.get("/products/{id}", response_model=ProductSchema)
-def get_product(id: int, db: Session = Depends(get_db)):
+@app.get("/products/{id}", response_class=HTMLResponse)
+def get_product(id: int, request: Request, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
+    return templates.TemplateResponse("product_detail.html", {"request": request, "product": product})
 
 # Обновление информации о товаре
 @app.put("/products/{id}", response_model=ProductSchema)
@@ -69,6 +71,12 @@ def update_product(id: int, product: ProductCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(db_product)
     return db_product
+
+
+@app.get("/products/new", response_class=HTMLResponse)
+def new_product(request: Request):
+    return templates.TemplateResponse("create_product.html", {"request": request})
+
 
 # Удаление товара
 @app.delete("/products/{id}", response_model=dict)
@@ -109,8 +117,8 @@ def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     return db_order
 
 # Получение списка заказов
-@app.get("/orders/", response_model=List[OrderResponse])
-def get_orders(db: Session = Depends(get_db)):
+@app.get("/orders/", response_class=HTMLResponse)
+def get_orders(request: Request, db: Session = Depends(get_db)):
     orders = db.query(Order).all()
     order_responses = []
 
@@ -124,22 +132,25 @@ def get_orders(db: Session = Depends(get_db)):
         )
         order_responses.append(order_response)
 
-    return order_responses
+    return templates.TemplateResponse("orders.html", {"request": request, "orders": order_responses})
+
 
 # Получение информации о заказе по id
-@app.get("/orders/{id}", response_model=OrderResponse)
-def get_order(id: int, db: Session = Depends(get_db)):
+@app.get("/orders/{id}", response_class=HTMLResponse)
+def get_order(id: int, request: Request, db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == id).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
     
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-    return OrderResponse(
+    order_response = OrderResponse(
         id=order.id,
         created_at=order.created_at.isoformat(),
         status=order.status,
         items=[OrderItemResponse(id=item.id, product_id=item.product_id, quantity=item.quantity) for item in items]
     )
+
+    return templates.TemplateResponse("order_detail.html", {"request": request, "order": order_response})
 
 # Обновление статуса заказа
 @app.patch("/orders/{id}/status", response_model=OrderResponse)
