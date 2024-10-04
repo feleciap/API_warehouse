@@ -131,33 +131,44 @@ def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_
 # 2. **Эндпоинты для заказов**:
 
 # Создание заказа с проверкой наличия товара на складе
+
 @app.post("/orders/", response_model=OrderResponse)
-def create_order(order: OrderCreate, db: Session = Depends(get_db)):
-    # Создаем новый заказ
-    db_order = Order(status=order.status, created_at=datetime.now(timezone.utc))
-    db.add(db_order)
-    db.commit()
-    db.refresh(db_order)
+def create_order(request: Request, order: OrderCreate, db: Session = Depends(get_db)):
+    # Начинаем транзакцию
+    try:
+        # Создаем новый заказ
+        db_order = Order(status=order.status, created_at=datetime.now(timezone.utc))
+        db.add(db_order)
+        db.commit()
+        db.refresh(db_order)
 
-    for item in order.items:
-        # Проверка наличия достаточного количества товара
-        db_product = db.query(Product).filter(Product.id == item.product_id).first()
-        if db_product is None:
-            raise HTTPException(status_code=404, detail=f"Product with id {item.product_id} not found")
-        if db_product.quantity < item.quantity:  # Используем quantity вместо stock
-            raise HTTPException(status_code=400, detail=f"Insufficient stock for product {db_product.name}")
+        for item in order.items:
+            # Проверка наличия товара и количества
+            db_product = db.query(Product).filter(Product.id == item.product_id).first()
+            if db_product is None:
+                db.rollback()  # Откатить изменения в случае ошибки
+                raise HTTPException(status_code=404, detail=f"Product with id {item.product_id} not found")
+            if db_product.quantity < item.quantity:
+                db.rollback()  # Откатить изменения в случае ошибки
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {db_product.name}")
 
-        # Обновление количества товара на складе
-        db_product.quantity -= item.quantity  # Используем quantity вместо stock
-        db.add(db_product)
+            # Обновление количества товара
+            db_product.quantity -= item.quantity
+            db.add(db_product)
 
-        # Создаем элемент заказа
-        db_order_item = OrderItem(product_id=item.product_id, order_id=db_order.id, quantity=item.quantity)
-        db.add(db_order_item)
+            # Создаем элемент заказа
+            db_order_item = OrderItem(product_id=item.product_id, order_id=db_order.id, quantity=item.quantity)
+            db.add(db_order_item)
 
-    db.commit()  # Сохраняем все изменения
-    return db_order
+        # Завершаем транзакцию
+        db.commit()
 
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    # Возвращаем HTML-шаблон после успешного создания заказа
+    return templates.TemplateResponse("order_created.html", {"request": request})
 
 # Получение списка заказов
 @app.get("/orders/", response_class=HTMLResponse)
@@ -211,4 +222,3 @@ def update_order_status(id: int, status: str = Form(...), db: Session = Depends(
     db.commit()
     db.refresh(order)
     return order
-

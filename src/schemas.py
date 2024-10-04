@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
+
+# Enum для статуса заказа
+class OrderStatus(str, Enum):
+    created = "created"
+    shipped = "shipped"
+    delivered = "delivered"
 
 # Pydantic модели для продуктов
 class ProductBase(BaseModel):
@@ -19,7 +26,7 @@ class Product(ProductBase):
     id: int
 
     class Config:
-        from_attributes = True  
+        orm_mode = True  
 
 class ProductResponse(BaseModel):
     id: int
@@ -44,13 +51,14 @@ class OrderItem(OrderItemBase):
     product: Product
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # Pydantic модели для заказов
 class OrderBase(BaseModel):
-    status: str
+    status: OrderStatus
 
 class OrderCreate(OrderBase):
+    status: OrderStatus
     items: List[OrderItemCreate]
 
 class Order(OrderBase):
@@ -58,11 +66,11 @@ class Order(OrderBase):
     items: List[OrderItem]
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # Модель для обновления статуса заказа
 class OrderStatusUpdate(BaseModel):
-    status: str
+    status: OrderStatus
 
 
 class OrderItemResponse(BaseModel):
@@ -71,14 +79,14 @@ class OrderItemResponse(BaseModel):
     quantity: int
 
     class Config:
-        from_attributes = True  # Включаем возможность использования from_orm
+        orm_mode = True  # Включаем возможность использования from_orm
 
 
 class OrderResponse(BaseModel):
     id: int
     created_at: datetime
-    status: str
+    status: OrderStatus
     items: List[OrderItemResponse]
 
     class Config:
-        from_attributes = True  
+        orm_mode = True
