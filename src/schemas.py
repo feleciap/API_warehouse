@@ -21,10 +21,19 @@ class Product(ProductBase):
     class Config:
         from_attributes = True  
 
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
+    price: float
+    quantity: int
+
+    class Config:
+        orm_mode = True
+
+
 # Pydantic модели для элементов заказа
 class OrderItemBase(BaseModel):
-    id: int
-    order_id: int
     product_id: int
     quantity: int
 
@@ -32,7 +41,6 @@ class OrderItemCreate(OrderItemBase):
     pass
 
 class OrderItem(OrderItemBase):
-    id: int
     product: Product
 
     class Config:

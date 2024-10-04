@@ -36,15 +36,22 @@
         }
         .back-button {
             padding: 10px 15px;
-            background-color: #6c757d; /* Цвет для кнопки "Назад" */
+            background-color: #6c757d;
             color: white;
             text-decoration: none;
             border-radius: 5px;
             display: inline-block;
-            margin-top: 20px; /* Отступ сверху */
+            margin-top: 20px;
         }
         .back-button:hover {
-            background-color: #5a6268; /* Цвет при наведении */
+            background-color: #5a6268;
+        }
+        .put-button {
+            background-color: #28a745;
+            margin-left: 10px;
+        }
+        .put-button:hover {
+            background-color: #218838;
         }
     </style>
 </head>
@@ -68,14 +75,35 @@
         <td>{{ product.price }}</td>
         <td>{{ product.quantity }}</td>
         <td>
-            <button onclick="location.href='/products/{{ product.id }}/edit'">Update</button>
+            <button onclick="location.href='/products/{{ product.id }}/edit'">Edit</button>
             <button onclick="location.href='/products/{{ product.id }}/delete'">Delete</button>
         </td>
     </tr>
     {% endfor %}
 </table>
 
-<a href="/" class="back-button">Назад на главную</a>
+<h3>Create or Update Product</h3>
+<form action="/products/new" method="POST">
+    <label for="product_id">Product ID:</label>
+    <input type="number" id="product_id" name="product_id" required>
+    
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" required>
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required>
+
+    <label for="price">Price:</label>
+    <input type="number" step="0.01" id="price" name="price" required>
+
+    <label for="quantity">Quantity:</label>
+    <input type="number" id="quantity" name="quantity" required>
+
+    <button type="submit" class="put-button">Submit</button>
+</form>
+
+
+<a href="/" class="back-button">Back to Home</a>
 
 </body>
 </html>
