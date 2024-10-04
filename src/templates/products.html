@@ -4,29 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .back-button {
+            padding: 10px 15px;
+            background-color: #6c757d; /* Цвет для кнопки "Назад" */
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 20px; /* Отступ сверху */
+        }
+        .back-button:hover {
+            background-color: #5a6268; /* Цвет при наведении */
+        }
+    </style>
 </head>
 <body>
-    <h1>Product List</h1>
-    
-    <!-- Кнопка для создания нового товара -->
-    <a href="/products/new">
-        <button>Create New Product</button>
-    </a>
-    
-    <ul>
-        {% for product in products %}
-        <li>
-            <strong>{{ product.name }}</strong> - {{ product.description }} ({{ product.stock }} in stock)
-            
-            <!-- Кнопки для редактирования и удаления товара -->
-            <a href="/products/{{ product.id }}/edit">
-                <button>Edit</button>
-            </a>
-            <a href="/products/{{ product.id }}/delete">
-                <button>Delete</button>
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
+
+<h2>Products List</h2>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Actions</th>
+    </tr>
+    {% for product in products %}
+    <tr>
+        <td>{{ product.id }}</td>
+        <td>{{ product.name }}</td>
+        <td>{{ product.description }}</td>
+        <td>{{ product.price }}</td>
+        <td>{{ product.quantity }}</td>
+        <td>
+            <button onclick="location.href='/products/{{ product.id }}/edit'">Update</button>
+            <button onclick="location.href='/products/{{ product.id }}/delete'">Delete</button>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<a href="/" class="back-button">Назад на главную</a>
+
 </body>
 </html>

@@ -10,7 +10,7 @@ class Product(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    description = Column(String)
+    description = Column(String, nullable=True)
     price = Column(Float)
     quantity = Column(Integer)
 
@@ -27,7 +27,8 @@ class OrderItem(Base):
     __tablename__ = 'order_items'
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey('orders.id'))
-    order_id = Column(Integer, ForeignKey('products.id'))
+    product_id = Column(Integer, ForeignKey('products.id'))
+    order_id = Column(Integer, ForeignKey('orders.id'))
     quantity = Column(Integer)
     order = relationship("Order", back_populates="items")
+    Product = relationship("Product")

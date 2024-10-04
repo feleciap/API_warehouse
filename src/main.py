@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, APIRouter, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -10,8 +10,6 @@ from database import SessionLocal, engine
 from models import Product, Order, OrderItem
 from schemas import Product as ProductSchema, ProductCreate, Order as OrderSchema, OrderCreate, OrderResponse, OrderItemResponse
 from fastapi.staticfiles import StaticFiles
-
-router = APIRouter()
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -36,17 +34,15 @@ def home(request: Request):
 
 
 # 1. **Эндпоинты для товаров**:
-
-# Создание товара
-@app.post("/products/", response_model=ProductSchema)
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-    db_product = Product(**product.dict())
+@app.post("/products/", response_model=schemas.Product)
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    db_product = models.Product(**product.dict())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     return db_product
 
-# Получение списка товаров
+# Получение всех продуктов
 @app.get("/products/", response_class=HTMLResponse)
 def get_products(request: Request, db: Session = Depends(get_db)):
     products = db.query(models.Product).all()
@@ -54,10 +50,8 @@ def get_products(request: Request, db: Session = Depends(get_db)):
 
 # Получение информации о товаре по id
 @app.get("/products/{id}", response_class=HTMLResponse)
-def get_product(id: int, request: Request, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == id).first()
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
+async def get_product(request: Request, id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == id).first()
     return templates.TemplateResponse("product_detail.html", {"request": request, "product": product})
 
 # Обновление информации о товаре
@@ -66,27 +60,49 @@ def update_product(id: int, product: ProductCreate, db: Session = Depends(get_db
     db_product = db.query(Product).filter(Product.id == id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    for key, value in product.dict().items():
-        setattr(db_product, key, value)
+    db_product.name = product.name
+    db_product.price = product.price
+    db_product.description = product.description  # Обновление поля description
     db.commit()
     db.refresh(db_product)
     return db_product
 
+@app.get("/products/{id}/edit", response_class=HTMLResponse)
+def edit_product(request: Request, id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    return templates.TemplateResponse("update_product.html", {"request": request, "product": product})
 
-@app.get("/products/new", response_class=HTMLResponse)
-def new_product(request: Request):
-    return templates.TemplateResponse("create_product.html", {"request": request})
+@app.post("/products/{id}/edit")
+def update_product(id: int, request: Request, name: str = Form(...), price: float = Form(...), description: str = Form(...), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Обновление полей продукта
+    product.name = name
+    product.price = price
+    product.description = description
+    db.commit()
+
+    # Перенаправление на страницу с сообщением об успешном обновлении
+    return templates.TemplateResponse("product_updated.html", {"request": request})
 
 
 # Удаление товара
-@app.delete("/products/{id}", response_model=dict)
-def delete_product(id: int, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.id == id).first()
+@app.post("/products/{id}/delete", response_class=HTMLResponse)
+def delete_product(request: Request, id: int, db: Session = Depends(get_db)):
+    db_product = db.query(models.Product).filter(models.Product.id == id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(db_product)
     db.commit()
-    return {"message": "Product deleted successfully"}
+    return templates.TemplateResponse("product_deleted.html", {"request": request})
+
+@app.get("/products/{id}/delete", response_class=HTMLResponse)
+def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    return templates.TemplateResponse("delete_product.html", {"request": request, "product": product})
+
 
 # 2. **Эндпоинты для заказов**:
 
@@ -154,7 +170,7 @@ def get_order(id: int, request: Request, db: Session = Depends(get_db)):
 
 # Обновление статуса заказа
 @app.patch("/orders/{id}/status", response_model=OrderResponse)
-def update_order_status(id: int, status: str, db: Session = Depends(get_db)):
+def update_order_status(id: int, status: str = Form(...), db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == id).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -162,6 +178,3 @@ def update_order_status(id: int, status: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
     return order
-
-# Подключение маршрутизатора
-app.include_router(router)

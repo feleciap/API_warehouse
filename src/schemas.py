@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
@@ -10,7 +10,10 @@ class ProductBase(BaseModel):
     quantity: int
 
 class ProductCreate(ProductBase):
-    pass
+    name: str = Field(..., min_length=1, max_length=100)
+    price: float = Field(..., gt=0)
+    description: Optional[str] = None
+    quantity: int
 
 class Product(ProductBase):
     id: int
