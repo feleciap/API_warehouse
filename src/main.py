@@ -8,6 +8,7 @@ import models, schemas
 from database import SessionLocal, engine
 from models import Product, Order, OrderItem
 from schemas import Product as ProductSchema, ProductCreate, Order as OrderSchema, OrderCreate, OrderResponse, OrderItemResponse , ProductResponse
+from src.models import Product
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -24,7 +25,7 @@ def get_db():
 
 
 # 1. **Эндпоинты для товаров**:
-@app.post("/products/", response_model=schemas.Product)
+@app.post("/products/", response_model=schemas.Product, status_code=201)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
     db_product = models.Product(**product.dict())
     db.add(db_product)
