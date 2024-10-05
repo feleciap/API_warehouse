@@ -49,17 +49,17 @@ def get_products(request: Request, db: Session = Depends(get_db)):
     return db.query(models.Product).all()
 
 # Получение информации о товаре по id
-@app.get("/products/{product_id}", response_model=schemas.Product)
-def get_product(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()  # Используйте .first()
+@app.get("/products/{id}", response_model=schemas.Product)
+def get_product(id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == id).first()  # Используйте .first()
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return product 
 
 # Обновление информации о товаре
-@app.put("/products/{product_id}")
-async def update_or_create_product(product_id: int, product_data: ProductCreate, request: Request, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.id == product_id).first()
+@app.put("/products/{id}")
+async def update_or_create_product(id: int, product_data: ProductCreate, request: Request, db: Session = Depends(get_db)):
+    db_product = db.query(Product).filter(Product.id == id).first()
     
     if db_product:
         # Обновляем существующий продукт
@@ -71,7 +71,7 @@ async def update_or_create_product(product_id: int, product_data: ProductCreate,
         db.refresh(db_product)
     else:
         # Создаем новый продукт
-        new_product = Product(id=product_id, **product_data.dict())
+        new_product = Product(id=id, **product_data.dict())
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
@@ -80,19 +80,6 @@ async def update_or_create_product(product_id: int, product_data: ProductCreate,
     # Возвращаем HTML-шаблон с сообщением об успешном обновлении
     return db_product
 
-@app.post("/products/{id}/edit")
-async def edit_product(
-    id: int = Path(..., title="The ID of the product to edit"),
-    name: str = Form(...),
-    price: float = Form(...),
-    description: str = Form(...),
-    ):
-    return {
-        "id": id,
-        "name": name,
-        "price": price,
-        "description": description,
-    }
 
 @app.get("/products/{id}/delete")
 def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_db)):
@@ -103,12 +90,14 @@ def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_
 
 # Создание заказа с проверкой наличия товара на складе
 
-@app.post("/orders/", response_model=OrderResponse)
-def create_order(request: Request, order: schemas.OrderCreate, db: Session = Depends(get_db)):
+from fastapi import Response
+
+@app.post("/orders/")
+def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     # Начинаем транзакцию
     try:
-        # Создаем новый заказ
-        db_order = Order(status=order.status, created_at=datetime.now(timezone.utc))
+        # Создаем новый заказ с начальным статусом "в процессе"
+        db_order = Order(status="in_progress", created_at=datetime.now(timezone.utc))
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
@@ -134,29 +123,36 @@ def create_order(request: Request, order: schemas.OrderCreate, db: Session = Dep
         # Завершаем транзакцию
         db.commit()
 
+        # Обновляем статус заказа на "завершён" или любой другой конечный статус
+        db_order.status = "в процессе"
+        db.commit()
+
     except Exception as e:
         db.rollback()
         raise e
 
-    return db_product
+    # Возвращаем успешный статус без содержимого
+    return Response(status_code=200)
 
+
+    
 # Получение списка заказов
-@app.get("/orders/", response_class=HTMLResponse)
-def get_orders(request: Request, db: Session = Depends(get_db)):
+@app.get("/orders/")
+def get_orders(db: Session = Depends(get_db)):
     orders = db.query(Order).all()
     order_responses = []
 
     for order in orders:
         items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-        order_response = OrderResponse(
-            id=order.id,
-            created_at=order.created_at.isoformat(),
-            status=order.status,
-            items=[OrderItemResponse(id=item.id, product_id=item.product_id, quantity=item.quantity) for item in items]
-        )
+        order_response = {
+            "id": order.id,
+            "created_at": order.created_at.isoformat(),
+            "status": order.status,
+            "items": [{"product_id": item.product_id, "quantity": item.quantity} for item in items]
+        }
         order_responses.append(order_response)
 
-    return templates.TemplateResponse("orders.html", {"request": request, "orders": order_responses})
+    return order_responses
 
 
 # Получение информации о заказе по id
@@ -166,21 +162,30 @@ def get_order(id: int, db: Session = Depends(get_db)):
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
     
+    # Получаем все элементы заказа
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
 
-    # Формирование детальной информации о заказе
+    # Формируем детальную информацию о заказе
     order_response = {
         "id": order.id,
         "created_at": order.created_at.isoformat(),
         "status": order.status,
-        "items": [
-            {
-                "id": item.id,
-                "product_id": item.product_id,
-                "quantity": item.quantity
-            } for item in items
-        ]
+        "items": []
     }
+
+    # Получаем информацию о каждом продукте
+    for item in items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if product:
+            order_response["items"].append({
+                "product_id": product.id,
+                "product_name": product.name,  # Предполагается, что у вас есть атрибут name
+                "product_description": product.description,  # Предполагается, что у вас есть атрибут description
+                "quantity": item.quantity,
+                "price": product.price  # Предполагается, что у вас есть атрибут price
+            })
+
+    return order_response
 
     # FastAPI автоматически преобразует словарь в JSON-ответ
     return {"order": order_response}
