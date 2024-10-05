@@ -43,19 +43,21 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     return db_product
 
 # Получение всех продуктов
-@app.get("/products/", response_class=HTMLResponse)
+@app.get("/products/")
 def get_products(request: Request, db: Session = Depends(get_db)):
-    products = db.query(models.Product).all()
-    return templates.TemplateResponse("products.html", {"request": request, "products": products})
+  #  products = db.query(models.Product).all()
+    return db.query(models.Product).all()
 
 # Получение информации о товаре по id
-@app.get("/products/{id}", response_class=HTMLResponse)
-async def get_product(request: Request, id: int, db: Session = Depends(get_db)):
-    product = db.query(models.Product).filter(models.Product.id == id).first()
-    return templates.TemplateResponse("product_detail.html", {"request": request, "product": product})
+@app.get("/products/{product_id}", response_model=schemas.Product)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()  # Используйте .first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product 
 
 # Обновление информации о товаре
-@app.put("/products/{product_id}", response_class=HTMLResponse)
+@app.put("/products/{product_id}")
 async def update_or_create_product(product_id: int, product_data: ProductCreate, request: Request, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.id == product_id).first()
     
@@ -76,33 +78,7 @@ async def update_or_create_product(product_id: int, product_data: ProductCreate,
         db_product = new_product
 
     # Возвращаем HTML-шаблон с сообщением об успешном обновлении
-    return templates.TemplateResponse("update_success.html", {"request": request})
-
-@app.post("/products/new", response_class=HTMLResponse)
-async def create_product(
-    request: Request, 
-    product_id: int = Form(...), 
-    name: str = Form(...), 
-    price: float = Form(...), 
-    description: str = Form(...), 
-    quantity: int = Form(...),  # Убедитесь, что quantity теперь передается
-    db: Session = Depends(get_db)
-):
-    # Создаем объект ProductCreate с включением quantity
-    product_data = ProductCreate(name=name, price=price, description=description, quantity=quantity)
-
-    # Используем метод обновления или создания
-    return await update_or_create_product(product_id, product_data, request, db)
-
-@app.get("/products/new", response_class=HTMLResponse)
-async def create_product(request: Request):
-    return templates.TemplateResponse("new_product.html", {"request": request})
-
-
-@app.get("/products/{id}/edit", response_class=HTMLResponse)
-def edit_product(request: Request, id: int, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == id).first()
-    return templates.TemplateResponse("update_product.html", {"request": request, "product": product})
+    return db_product
 
 @app.post("/products/{id}/edit")
 async def edit_product(
@@ -118,30 +94,17 @@ async def edit_product(
         "description": description,
     }
 
-
-
-# Удаление товара
-@app.post("/products/{id}/delete", response_class=HTMLResponse)
-def delete_product(request: Request, id: int, db: Session = Depends(get_db)):
-    db_product = db.query(models.Product).filter(models.Product.id == id).first()
-    if db_product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    db.delete(db_product)
-    db.commit()
-    return templates.TemplateResponse("product_deleted.html", {"request": request})
-
-@app.get("/products/{id}/delete", response_class=HTMLResponse)
+@app.get("/products/{id}/delete")
 def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
-    return templates.TemplateResponse("delete_product.html", {"request": request, "product": product})
-
+    return product
 
 # 2. **Эндпоинты для заказов**:
 
 # Создание заказа с проверкой наличия товара на складе
 
 @app.post("/orders/", response_model=OrderResponse)
-def create_order(request: Request, order: OrderCreate, db: Session = Depends(get_db)):
+def create_order(request: Request, order: schemas.OrderCreate, db: Session = Depends(get_db)):
     # Начинаем транзакцию
     try:
         # Создаем новый заказ
@@ -175,8 +138,7 @@ def create_order(request: Request, order: OrderCreate, db: Session = Depends(get
         db.rollback()
         raise e
 
-    # Возвращаем HTML-шаблон после успешного создания заказа
-    return templates.TemplateResponse("order_created.html", {"request": request})
+    return db_product
 
 # Получение списка заказов
 @app.get("/orders/", response_class=HTMLResponse)
@@ -198,21 +160,33 @@ def get_orders(request: Request, db: Session = Depends(get_db)):
 
 
 # Получение информации о заказе по id
-@app.get("/orders/{id}", response_class=HTMLResponse)
-def get_order(id: int, request: Request, db: Session = Depends(get_db)):
+@app.get("/orders/{id}")
+def get_order(id: int, db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == id).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
     
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-    order_response = OrderResponse(
-        id=order.id,
-        created_at=order.created_at.isoformat(),
-        status=order.status,
-        items=[OrderItemResponse(id=item.id, product_id=item.product_id, quantity=item.quantity) for item in items]
-    )
 
-    return templates.TemplateResponse("order_detail.html", {"request": request, "order": order_response})
+    # Формирование детальной информации о заказе
+    order_response = {
+        "id": order.id,
+        "created_at": order.created_at.isoformat(),
+        "status": order.status,
+        "items": [
+            {
+                "id": item.id,
+                "product_id": item.product_id,
+                "quantity": item.quantity
+            } for item in items
+        ]
+    }
+
+    # FastAPI автоматически преобразует словарь в JSON-ответ
+    return {"order": order_response}
+
+    # Возвращаем JSON-ответ с детальной информацией о заказе
+    return JSONResponse(content={"order": order_response})
 
 # Обновление статуса заказа
 @app.patch("/orders/{id}/status", response_model=OrderResponse)
@@ -222,7 +196,7 @@ def update_order_status(id: int, status: str = Form(...), db: Session = Depends(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Добавьте проверку допустимых статусов, если это необходимо
-    valid_statuses = ["Pending", "Shipped", "Delivered", "Cancelled"]
+    valid_statuses = ["в процессе", "отправлен", "доставлен"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
 

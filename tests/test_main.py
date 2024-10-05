@@ -1,44 +1,46 @@
 import pytest
 from fastapi.testclient import TestClient
+from src.main import app
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Product  # Импортируйте свои модели
-from main import app, get_db  # Импортируйте ваше приложение FastAPI и функцию get_db
+from src.database import get_db
+from src.models import Base  # Импортируем Base из models
+from jinja2 import Environment, FileSystemLoader
 
-# Настройка тестовой базы данных (например, SQLite in-memory)
-SQLALCHEMY_DATABASE_URL = "postgresql://feleciap:123@localhost/warehouse"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+env = Environment(loader=FileSystemLoader('src/templates'))
+
+
+# Создаем новую базу данных для тестирования
+DATABASE_URL = "sqlite:///./test.db"  # Можно использовать SQLite для тестов
+engine = create_engine(DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Создание тестовой сессии для тестов
-@pytest.fixture(scope="module")
-def test_db():
-    Base.metadata.create_all(bind=engine)  # Создание всех таблиц
+# Создаем таблицы базы данных
+Base.metadata.create_all(bind=engine)
+
+# Переопределяем зависимость get_db
+def override_get_db():
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)  # Удаление всех таблиц после тестов
+
+app.dependency_overrides[get_db] = override_get_db
+
+client = TestClient(app)
 
 @pytest.fixture(scope="module")
-def client(test_db):
-    def override_get_db():
-        try:
-            yield test_db
-        finally:
-            test_db.close()
+def setup_database():
+    # Код для настройки базы данных (если необходимо)
+    yield
+    # Код для очистки базы данных после тестов (опционально)
+    Base.metadata.drop_all(bind=engine)
 
-    app.dependency_overrides[get_db] = override_get_db  # Переопределение зависимости
-    return TestClient(app)
 
-def test_create_product(client):
-    response = client.post("/products/", json={"name": "Test Product", "description": "Test Desc", "price": 10.0, "quantity": 100})
+
+
+def test_update_order_status():
+    response = client.patch("/orders/1/status", data={"status": "Shipped"})  # Предполагается, что заказ ID 1 существует
     assert response.status_code == 200
-    assert response.json()["name"] == "Test Product"
-
-def test_get_products(client):
-    response = client.get("/products/")
-    print(response.text)
-    assert response.status_code == 200
-    assert len(response.json()) > 0
+    assert response.json()["status"] == "Shipped"

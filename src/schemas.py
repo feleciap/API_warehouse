@@ -4,15 +4,13 @@ from datetime import datetime
 
 # Pydantic модели для продуктов
 class ProductBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
-    price: float
+    price: float = Field(..., gt=0)
     quantity: int
 
 class ProductCreate(ProductBase):
-    name: str = Field(..., min_length=1, max_length=100)
-    price: float = Field(..., gt=0)
-    description: Optional[str] = None
-    quantity: int
+    pass
 
 class Product(ProductBase):
     id: int
@@ -23,15 +21,15 @@ class Product(ProductBase):
 class ProductResponse(BaseModel):
     id: int
     name: str
-    description: str | None = None
+    description: Optional[str] = None
     price: float
     quantity: int
+
     class Config:
         orm_mode = True
+
 # Pydantic модели для элементов заказа
 class OrderItemBase(BaseModel):
-    id: int
-    order_id: int
     product_id: int
     quantity: int
 
@@ -54,6 +52,7 @@ class OrderCreate(OrderBase):
 
 class Order(OrderBase):
     id: int
+    created_at: datetime
     items: List[OrderItem]
 
     class Config:
@@ -63,7 +62,6 @@ class Order(OrderBase):
 class OrderStatusUpdate(BaseModel):
     status: str
 
-
 class OrderItemResponse(BaseModel):
     id: int
     product_id: int
@@ -71,7 +69,6 @@ class OrderItemResponse(BaseModel):
 
     class Config:
         orm_mode = True 
-
 
 class OrderResponse(BaseModel):
     id: int
