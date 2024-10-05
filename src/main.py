@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Form
+from fastapi import FastAPI, Depends, HTTPException, Form , Path
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -105,12 +105,20 @@ def edit_product(request: Request, id: int, db: Session = Depends(get_db)):
     return templates.TemplateResponse("update_product.html", {"request": request, "product": product})
 
 @app.post("/products/{id}/edit")
-async def update_product(id: int, request: Request, name: str = Form(...), price: float = Form(...), description: str = Form(...), db: Session = Depends(get_db)):
-    product_data = ProductCreate(name=name, price=price, description=description)
-    
-    # Здесь вызываем функцию обновления или создания
-    response = await update_or_create_product(id, product_data, request, db)
-    return response  # Возвращаем перенаправление
+async def edit_product(
+    id: int = Path(..., title="The ID of the product to edit"),
+    name: str = Form(...),
+    price: float = Form(...),
+    description: str = Form(...),
+    ):
+    return {
+        "id": id,
+        "name": name,
+        "price": price,
+        "description": description,
+    }
+
+
 
 # Удаление товара
 @app.post("/products/{id}/delete", response_class=HTMLResponse)
