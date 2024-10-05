@@ -68,21 +68,31 @@ async def update_or_create_product(id: int, product_data: ProductCreate, request
     return db_product
 
 
-@app.get("/products/{id}/delete")
+@app.delete("/products/{id}")
 def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_db)):
+    # Находим продукт по id
     product = db.query(Product).filter(Product.id == id).first()
-    return product
+    
+    # Если продукт не найден, возвращаем ошибку 404
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Удаляем продукт из базы данных
+    db.delete(product)
+    db.commit()
+
+    # Возвращаем успешный ответ
+    return {"detail": "Product deleted successfully"}
 
 # 2. **Эндпоинты для заказов**:
 
 # Создание заказа с проверкой наличия товара на складе
-
-from fastapi import Response
-
-@app.post("/orders/")
+@app.post("/orders/", response_model=OrderResponse)
 def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     try:
-        db_order = Order(status="in_progress", created_at=datetime.now(timezone.utc))
+        print(f"Полученные данные заказа: {order}")
+
+        db_order = Order(status=order.status, created_at=datetime.now(timezone.utc))
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
@@ -90,29 +100,30 @@ def create_order(order: OrderCreate, db: Session = Depends(get_db)):
         for item in order.items:
             db_product = db.query(Product).filter(Product.id == item.product_id).first()
             if db_product is None:
-                db.rollback()  
+                db.rollback()
                 raise HTTPException(status_code=404, detail=f"Product with id {item.product_id} not found")
             if db_product.quantity < item.quantity:
-                db.rollback()  
+                db.rollback()
                 raise HTTPException(status_code=400, detail=f"Insufficient stock for product {db_product.name}")
 
             db_product.quantity -= item.quantity
             db.add(db_product)
+
             db_order_item = OrderItem(product_id=item.product_id, order_id=db_order.id, quantity=item.quantity)
             db.add(db_order_item)
 
         db.commit()
-        db_order.status = "в процессе"
+
+        db_order.status = order.status
         db.commit()
+
+        return OrderResponse(id=db_order.id, created_at=db_order.created_at, status=db_order.status, items=[])
 
     except Exception as e:
         db.rollback()
-        raise e
-
-    return Response(status_code=200)
-
-
-    
+        print(f"Ошибка при создании заказа: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+        
 # Получение списка заказов
 @app.get("/orders/")
 def get_orders(db: Session = Depends(get_db)):
@@ -130,7 +141,6 @@ def get_orders(db: Session = Depends(get_db)):
         order_responses.append(order_response)
 
     return order_responses
-
 
 # Получение информации о заказе по id
 @app.get("/orders/{id}")

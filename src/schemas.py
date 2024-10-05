@@ -29,14 +29,14 @@ class ProductResponse(BaseModel):
         orm_mode = True
 
 # Pydantic модели для элементов заказа
-class OrderItemBase(BaseModel):
+class OrderItem(BaseModel):
     product_id: int
     quantity: int
 
-class OrderItemCreate(OrderItemBase):
+class OrderItemCreate(OrderItem):
     pass
 
-class OrderItem(OrderItemBase):
+class OrderItem(OrderItem):
     id: int
     product: Product
 
