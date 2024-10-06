@@ -1,8 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, Form 
+from fastapi import FastAPI, Depends, HTTPException, Form ,Request, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List
-from fastapi import Request
 from datetime import datetime, timezone
 import models, schemas
 from database import SessionLocal, engine
@@ -70,18 +69,14 @@ async def update_or_create_product(id: int, product_data: ProductCreate, request
 
 @app.delete("/products/{id}")
 def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_db)):
-    # Находим продукт по id
     product = db.query(Product).filter(Product.id == id).first()
     
-    # Если продукт не найден, возвращаем ошибку 404
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Удаляем продукт из базы данных
     db.delete(product)
     db.commit()
 
-    # Возвращаем успешный ответ
     return {"detail": "Product deleted successfully"}
 
 # 2. **Эндпоинты для заказов**:
@@ -90,9 +85,7 @@ def confirm_delete_product(request: Request, id: int, db: Session = Depends(get_
 @app.post("/orders/", response_model=OrderResponse)
 def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     try:
-        print(f"Полученные данные заказа: {order}")
-
-        db_order = Order(status=order.status, created_at=datetime.now(timezone.utc))
+        db_order = Order(status="в процессе", created_at=datetime.now(timezone.utc))
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
@@ -100,30 +93,31 @@ def create_order(order: OrderCreate, db: Session = Depends(get_db)):
         for item in order.items:
             db_product = db.query(Product).filter(Product.id == item.product_id).first()
             if db_product is None:
-                db.rollback()
+                db.rollback()  # Откатить изменения в случае ошибки
                 raise HTTPException(status_code=404, detail=f"Product with id {item.product_id} not found")
             if db_product.quantity < item.quantity:
-                db.rollback()
+                db.rollback()  # Откатить изменения в случае ошибки
                 raise HTTPException(status_code=400, detail=f"Insufficient stock for product {db_product.name}")
 
             db_product.quantity -= item.quantity
             db.add(db_product)
-
             db_order_item = OrderItem(product_id=item.product_id, order_id=db_order.id, quantity=item.quantity)
             db.add(db_order_item)
 
         db.commit()
-
-        db_order.status = order.status
+        db_order.status = "в процессе"  
         db.commit()
+        db.refresh(db_order) 
 
-        return OrderResponse(id=db_order.id, created_at=db_order.created_at, status=db_order.status, items=[])
-
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
-        print(f"Ошибка при создании заказа: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-        
+
+    return db_order
+
 # Получение списка заказов
 @app.get("/orders/")
 def get_orders(db: Session = Depends(get_db)):
@@ -172,6 +166,7 @@ def get_order(id: int, db: Session = Depends(get_db)):
     return order_response
 
 # Обновление статуса заказа
+
 @app.patch("/orders/{id}/status", response_model=OrderResponse)
 def update_order_status(id: int, status: str = Form(...), db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == id).first()

@@ -33,8 +33,10 @@ class OrderItem(BaseModel):
     product_id: int
     quantity: int
 
-class OrderItemCreate(OrderItem):
-    pass
+class OrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+
 
 class OrderItem(OrderItem):
     id: int
@@ -47,7 +49,7 @@ class OrderItem(OrderItem):
 class OrderBase(BaseModel):
     status: str
 
-class OrderCreate(OrderBase):
+class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
 
 class Order(OrderBase):
