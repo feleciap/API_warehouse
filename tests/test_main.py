@@ -6,7 +6,6 @@ from src.main import app
 from src.database import TestingSessionLocal, Base  , get_db
 from src import models  
 
-
 DATABASE_URL = "postgresql://feleciap:123@localhost/warehouse"
 engine = create_engine(DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

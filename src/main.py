@@ -1,14 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Form ,Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Depends, HTTPException, Form, Request
 from sqlalchemy.orm import Session
-from typing import List
 from datetime import datetime, timezone
-import models, schemas
-from database import SessionLocal, engine
-from models import Product, Order, OrderItem
-from schemas import Product as ProductSchema, ProductCreate, Order as OrderSchema, OrderCreate, OrderResponse, OrderItemResponse , ProductResponse
-from src.models import Product
-
+from .models import Product, Order, OrderItem
+from .schemas import ProductCreate, OrderCreate, OrderResponse
+from .database import SessionLocal, engine
+from src import models
+from src import schemas
 
 models.Base.metadata.create_all(bind=engine)
 

@@ -1,24 +1,25 @@
-version: '3.8'
-
+version: "3"
 services:
-  db:
-    image: postgres:15
-    container_name: postgres_db
+  postgres_warehouse:
+    image: postgres
     environment:
       POSTGRES_USER: feleciap
       POSTGRES_PASSWORD: 123
       POSTGRES_DB: warehouse
     ports:
       - "5432:5432"
+    networks:
+      - warehouse_network
 
   app:
     build: .
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: postgresql://feleciap:123@db:5432/warehouse
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    depends_on:
+      - postgres_warehouse
+    networks:
+      - warehouse_network
 
+networks:
+  warehouse_network:
+    driver: bridge
